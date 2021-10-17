@@ -4,8 +4,6 @@
 #include <string.h>
 #include <pthread.h>
 #include <termios.h>
-//#include <sys/ipc.h>
-//#include <sys/msg.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -20,11 +18,10 @@ void CmAdd(char *NameEvent);
 void CmRemove(char *NameEvent);
 void CmTrigger(char *NameEvent);
 void CmList();
+void EventExists();
 
 void *hilolecturaTerm(void *param);
 
-// Declaracion de variable que funcionara como switch de manera global
-int conv = 6;
 char Events[4][10] = {"null", "null", "null", "null"};
 char a[10] = "asd";
 
@@ -33,42 +30,13 @@ int main(int argc, char **argv)
     pthread_t threadID;
     pthread_create(&threadID, NULL, &hilolecturaTerm, NULL);
 
-    int shm_fd = shm_open("/shm0", O_CREAT | O_RDWR, 0600);
-    if (shm_fd < 0)
-    {
-        perror("shm memory error: ");
-        exit(EXIT_FAILURE);
-    }
-    fprintf(stdout, "Shared memory is created with fd: %d\n", shm_fd);
-
-    if (ftruncate(shm_fd, SH_SIZE * sizeof(char)) < 0)
-    {
-        perror("Truncation failed: ");
-        exit(EXIT_FAILURE);
-    }
-
-    fprintf(stdout, "The memory region is truncated.\n");
-
-    void *map = mmap(NULL, SH_SIZE, PROT_WRITE, MAP_SHARED, shm_fd, 0);
-
-    if (map == MAP_FAILED)
-    {
-        perror("Mapping failed: ");
-        exit(EXIT_FAILURE);
-    }
-    char *cmd = (char *)map;
-    cmd[0] = 'A';
-    cmd[1] = 'B';
-    cmd[2] = 'C';
-    cmd[3] = '\n';
-    cmd[4] = '\0';
-
     sleep(20);
 }
 void CmExit()
 {
     //Proceso de cuando se pide exit
     printf("Exit\n");
+    CmTrigger("exit");
     exit(0);
 }
 void CmAdd(char *NameEvent)
@@ -97,9 +65,44 @@ void CmRemove(char *NameEvent)
         }
     }
 }
-void CmTrigger(char *buffer)
+void CmTrigger(char *NameEvent)
 {
     //Porceso de cuando se pide trigger
+    int shm_fd = shm_open("/shm0", O_CREAT | O_RDWR, 0600);
+    if (shm_fd < 0)
+    {
+        perror("shm memory error: ");
+        exit(EXIT_FAILURE);
+    }
+    fprintf(stdout, "Shared memory is created with fd: %d\n", shm_fd);
+
+    if (ftruncate(shm_fd, SH_SIZE * sizeof(char)) < 0)
+    {
+        perror("Truncation failed: ");
+        exit(EXIT_FAILURE);
+    }
+
+    fprintf(stdout, "The memory region is truncated.\n");
+
+    void *map = mmap(NULL, SH_SIZE, PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    if (map == MAP_FAILED)
+    {
+        perror("Mapping failed: ");
+        exit(EXIT_FAILURE);
+    }
+    char *cmd = (char *)map;
+    for (int i = 0; i < 10; i++) //Para limpiar shm
+    {
+        cmd[i] = '\0';
+    }
+    for (int i = 0; i < strlen(NameEvent); i++)
+    {
+        cmd[0] = 't';
+        cmd[1] = 'g';
+        cmd[2] = 'r';
+        cmd[i+3] = NameEvent[i];
+    }
+
 }
 void CmList()
 {
@@ -143,7 +146,7 @@ void *hilolecturaTerm(void *param) //Proceso hilo
             token = strtok(NULL, " ");
         }
         
-        int exitEv = strcmp(action, "exit");
+        int exitEv = strcmp(action, "exit\n");
         int addEv = strcmp(action, "add");
         int removeEv = strcmp(action, "remove");
         int triggerEv = strcmp(action, "trigger");
@@ -153,30 +156,26 @@ void *hilolecturaTerm(void *param) //Proceso hilo
         if (exitEv == 0)
         {
             CmExit();
-            conv = 1;
         }
         else if (addEv == 0)
         {
             printf("Add\n");
             CmAdd(nameEv);
-            conv = 2;
         }
         else if (removeEv == 0)
         {
             printf("Remove\n");
             CmRemove(nameEv);
-            conv = 3;
         }
         else if (triggerEv == 0)
         {
             printf("Trigger\n");
-            conv = 4;
+            CmTrigger(nameEv);
         }
         else if (listCl == 0)
         {
             printf("List\n");
             CmList();
-            conv = 5;
         }
     }
     return NULL;
