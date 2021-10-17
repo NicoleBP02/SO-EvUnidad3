@@ -54,12 +54,12 @@ int main(int argc, char **argv)
         perror("Mapping failed: ");
         exit(EXIT_FAILURE);
     }
-    char* ptr = (char*)map;
-     ptr[0] = 'A';
-     ptr[1] = 'B';
-     ptr[2] = 'C';
-     ptr[3] = '\n';
-     ptr[4] = '\0';
+    char* cmd = (char*)map;
+     cmd[0] = 'A';
+     cmd[1] = 'B';
+     cmd[2] = 'C';
+     cmd[3] = '\n';
+     cmd[4] = '\0';
 
     /*char respuesta[16];
     while (1)

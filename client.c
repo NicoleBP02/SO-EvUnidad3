@@ -1,39 +1,49 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <pthread.h>
-// Librerias para FIFO
+#include <sys/mman.h>
+#include <sys/stat.h>        /* For mode constants */
+#include <fcntl.h>           /* For O_* constants */
 #include <string.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
+#include <sys/types.h>
 
-void *readFIFO(void *param)
+#define SH_SIZE 16
+
+/*void *readFIFO(void *param)
 {
-    int fd;
 
-    // FIFO file path
-    char *myfifo = "~/reps/SO-EvaluacionUnidad3/myfifo";
-
-    // Creating the named file(FIFO)
-    // mkfifo(<pathname>, <permission>)
-    // mkfifo(myfifo, 0666);
-    while (1)
-        // Open FIFO for write only
-        fd = open("myfifo", O_WRONLY);
-    if (fd == 1)
-    {
-        return 1;
-    }
-    // Commands logic
-    return NULL;
-}
+}*/
 
 int main(int argc, char *argv[])
 {
+    int shm_fd = shm_open("/shm0", O_RDONLY, 0600);
+    if (shm_fd < 0)
+    {
+        perror("shm memory error: ");
+        exit(EXIT_FAILURE);
+    }
+    fprintf(stdout, "Shared memory is created with fd: %d\n", shm_fd);
+
+    void *map = mmap(NULL, SH_SIZE, PROT_READ, MAP_SHARED, shm_fd, 0);
+
+    if (map == MAP_FAILED)
+    {
+        perror("Mapping failed: ");
+        exit(EXIT_FAILURE);
+    }
+
+    char *cmd = (char *)map;
+    fprintf(stdout, "The contents of shared memory object: %s\n", cmd);
+
+    if (munmap(cmd, SH_SIZE) < 0)
+    {
+        perror("Unmapping failed: ");
+        exit(EXIT_FAILURE);
+    }
     // Se crea el hilo para leer el FIFO
-    pthread_t threadID;
+    /*pthread_t threadID;
     pthread_create(&threadID, NULL, &readFIFO, NULL);
+    */
 
     /*
         Se maneja la lectura de terminal
@@ -42,8 +52,8 @@ int main(int argc, char *argv[])
         aceptados, modificando un entero de comparacion para luego 
         segun este mismo modificar un entero de switch 
     */
-    int conv = 6;
-    char respuesta[16];
+    //int conv = 6;
+    /*char respuesta[16];
     while (1)
     {
         scanf("%s", respuesta);
@@ -74,7 +84,7 @@ int main(int argc, char *argv[])
         {
             conv = 4;
         }
-    }
+    }*/
 
     exit(EXIT_SUCCESS);
 }
