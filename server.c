@@ -15,21 +15,23 @@
 
 #define SH_SIZE 16
 
-void CmExit(char *buffer);
-void CmAdd(char *buffer);
-void CmRemove(char *buffer);
-void CmTrigger(char *buffer);
-void CmList(char *buffer);
+void CmExit();
+void CmAdd(char *NameEvent);
+void CmRemove(char *NameEvent);
+void CmTrigger(char *NameEvent);
+void CmList();
 
-//void *hilolecturamsg(void *param);
+void *hilolecturaTerm(void *param);
 
 // Declaracion de variable que funcionara como switch de manera global
 int conv = 6;
+char Events[4][10] = {"null", "null", "null", "null"};
+char a[10] = "asd";
 
 int main(int argc, char **argv)
 {
-    /*pthread_t threadID;
-    pthread_create(&threadID, NULL, &hilolecturamsg, NULL);*/
+    pthread_t threadID;
+    pthread_create(&threadID, NULL, &hilolecturaTerm, NULL);
 
     int shm_fd = shm_open("/shm0", O_CREAT | O_RDWR, 0600);
     if (shm_fd < 0)
@@ -54,74 +56,128 @@ int main(int argc, char **argv)
         perror("Mapping failed: ");
         exit(EXIT_FAILURE);
     }
-    char* cmd = (char*)map;
-     cmd[0] = 'A';
-     cmd[1] = 'B';
-     cmd[2] = 'C';
-     cmd[3] = '\n';
-     cmd[4] = '\0';
+    char *cmd = (char *)map;
+    cmd[0] = 'A';
+    cmd[1] = 'B';
+    cmd[2] = 'C';
+    cmd[3] = '\n';
+    cmd[4] = '\0';
 
-    /*char respuesta[16];
-    while (1)
-    {
-        scanf("%s", respuesta);
-        // printf("------------------------Respuesta %s ----------------------------------\n", respuesta);
-        for (int i = 0; respuesta[i] != '\0'; ++i)
-        {
-            respuesta[i] = tolower(respuesta[i]);
-        }
-        // Tokenizar lo que se escribe por la terminal para ver a què comando corresponde (que seria la posicion 0)
-        int exitEv = strcmp(respuesta, "exit");
-        int addEv = strcmp(respuesta, "add");
-        int removeEv = strcmp(respuesta, "remove");
-        int triggerEv = strcmp(respuesta, "trigger");
-        int listCl = strcmp(respuesta, "list");
-
-        // Cambia el valor de conv segun la entrada de usuario
-        if (exitEv == 0)
-        {
-            conv = 1;
-        }
-        else if (addEv == 0)
-        {
-            conv = 2;
-        }
-        else if (removeEv == 0)
-        {
-            conv = 3;
-        }
-        else if (triggerEv == 0)
-        {
-            conv = 4;
-        }
-        else if (listCl == 0)
-        {
-            conv = 5;
-        }
-    }
-    return NULL;*/
+    sleep(20);
 }
-void CmExit(char *buffer)
+void CmExit()
 {
     //Proceso de cuando se pide exit
+    printf("Exit\n");
+    exit(0);
 }
-void CmAdd(char *buffer)
+void CmAdd(char *NameEvent)
 {
     //Proceso de cuando se pide add
+    for (int i = 0; i < 4; i++)
+    {
+        if (strcmp(Events[i], "null") == 0)
+        {
+            strcpy(Events[i], NameEvent);
+            printf("Evento %d: %s", i, Events[i]);
+            break;
+        }
+    }
 }
-void CmRemove(char *buffer)
+void CmRemove(char *NameEvent)
 {
     //Proceso de cuando se pide remove
+    for (int i = 0; i < 4; i++)
+    {
+        if (strcmp(Events[i], NameEvent) == 0)
+        {
+            strcpy(Events[i], "null");
+            printf("Evento %d: %s\n", i, Events[i]);
+            break;
+        }
+    }
 }
 void CmTrigger(char *buffer)
 {
     //Porceso de cuando se pide trigger
 }
-void CmList(char *buffer)
+void CmList()
 {
     //Proceso de cuando se pide list
+    for (int i = 0; i < 4; i++)
+    {
+        printf("Evento %d: %s\n", i, Events[i]);
+    }
 }
-/*void *hilolecturamsg(void *param) //Proceso hilo
+void *hilolecturaTerm(void *param) //Proceso hilo
 {
-    //Todo el proceso para leer el fifo
-}*/
+    char input[16] = "nada";
+    while (1)
+    {
+        fgets(input,16, stdin);
+        // printf("------------------------Respuesta %s ----------------------------------\n", respuesta);
+        for (int i = 0; input[i] != '\0'; ++i)
+        {
+            input[i] = tolower(input[i]);
+        }
+        // Tokenizar lo que se escribe por la terminal para ver a què comando corresponde (que seria la posicion 0)
+        char *token = strtok(input, " ");
+
+        char *action = NULL;
+
+        char *nameEv;
+
+        // loop through the string to extract all other tokens
+
+        for (int i = 0; token != NULL; i++)
+        {
+            // printf("Entro al ciclo");
+            if (i == 0)
+            {
+                action = token;
+            }
+            else if (i == 1)
+            {
+                nameEv = token;
+            }
+            token = strtok(NULL, " ");
+        }
+        
+        int exitEv = strcmp(action, "exit");
+        int addEv = strcmp(action, "add");
+        int removeEv = strcmp(action, "remove");
+        int triggerEv = strcmp(action, "trigger");
+        int listCl = strcmp(action, "list\n");
+
+        // Cambia el valor de conv segun la entrada de usuario
+        if (exitEv == 0)
+        {
+            CmExit();
+            conv = 1;
+        }
+        else if (addEv == 0)
+        {
+            printf("Add\n");
+            CmAdd(nameEv);
+            conv = 2;
+        }
+        else if (removeEv == 0)
+        {
+            printf("Remove\n");
+            CmRemove(nameEv);
+            conv = 3;
+        }
+        else if (triggerEv == 0)
+        {
+            printf("Trigger\n");
+            conv = 4;
+        }
+        else if (listCl == 0)
+        {
+            printf("List\n");
+            CmList();
+            conv = 5;
+        }
+    }
+    return NULL;
+}
