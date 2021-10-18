@@ -31,6 +31,7 @@ void CmUnsub(char *NameEvent);
 void CmSub(char *NameEvent);
 int WaitConf();
 void CmList();
+void CleanFile();
 
 
 char Events[4][10] = {"null", "null", "null", "null"};
@@ -146,7 +147,7 @@ void CmSub(char *NameEvent)
         exit(EXIT_FAILURE);
     }
     char *cmd = (char *)map;
-    for (int i = 0; i < 10; i++) //Para limpiar shm
+    for (int i = 0; i < 32; i++) //Para limpiar shm
     {
         cmd[i] = '\0';
     }
@@ -161,7 +162,7 @@ void CmSub(char *NameEvent)
 
     int exists = WaitConf();
 
-    if (exists == 0){
+    if (exists == 1){
         for (int i = 0; i < 4; i++)
         {
             if (strcmp(Events[i], "null") == 0)
@@ -172,6 +173,7 @@ void CmSub(char *NameEvent)
             }
         }
     }
+    CleanFile();
 }
 void CmUnsub(char *NameEvent)
 {
@@ -204,7 +206,35 @@ int WaitConf(){
     }
     fprintf(stdout, "Shared memory is created with fd: %d\n", shm_fd);
 
-    fprintf(stdout, "The memory region is truncated.\n");
+    void *map = mmap(NULL, SH_SIZE, PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    if (map == MAP_FAILED)
+    {
+        perror("Mapping failed: ");
+        exit(EXIT_FAILURE);
+    }
+    
+    for (int i = 0; i < 50;i++)
+    {
+        char *readsm = (char *)map;
+        printf("Verif: %s\n", readsm);
+        if(strcmp(readsm, "CONFIRMADO\n") == 0){
+            return 1;
+            break;
+        }
+    }
+    return 0;
+
+}
+void CleanFile()
+{
+    //Porceso de cuando se pide clean file
+    int shm_fd = shm_open("/shm0", O_CREAT | O_RDWR, 0600);
+    if (shm_fd < 0)
+    {
+        perror("shm memory error: ");
+        exit(EXIT_FAILURE);
+    }
+    fprintf(stdout, "Shared memory is opened with fd: %d\n", shm_fd);
 
     void *map = mmap(NULL, SH_SIZE, PROT_WRITE, MAP_SHARED, shm_fd, 0);
     if (map == MAP_FAILED)
@@ -212,15 +242,9 @@ int WaitConf(){
         perror("Mapping failed: ");
         exit(EXIT_FAILURE);
     }
-
-    for (int i = 0; i < 100; i++)
+    char *cmd = (char *)map;
+    for (int i = 0; i < 32; i++) //Para limpiar shm
     {
-        char *readsm = (char *)map;
-        printf("Verif: %s\n", readsm);
-        if(strcmp(readsm, "subconf") == 0){
-            return 1;
-        }
+        cmd[i] = '\0';
     }
-    return 0;
-
 }

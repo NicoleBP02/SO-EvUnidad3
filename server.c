@@ -65,9 +65,9 @@ int main(int argc, char **argv)
         // Tokenizar lo que se escribe por la terminal para ver a què comando corresponde (que seria la posicion 0)
         char *token = strtok(readsm, " ");
 
-        char *action = NULL;
+        char *action = "NULL";
 
-        char *nameEv;
+        char *nameEv = "NULL";
 
         // loop through the string to extract all other tokens
 
@@ -85,15 +85,14 @@ int main(int argc, char **argv)
             token = strtok(NULL, " ");
         }
 
-        /*int sub = strcmp(action, "add");
-        int unsub = strcmp(action, "remove");
+        int sub = strcmp(action, "sub");
+        int unsub = strcmp(action, "unsub");
 
-        // Cambia el valor de conv segun la entrada de usuario
         if (sub == 0)
         {
             printf("Sub\n");
-            if (EventExists(nameEv) == 0){
-                WriteFile("subconf");
+            if (EventExists(nameEv) == 1){
+                WriteFile("CONFIRMADO\n");
             };
         }
         else if (unsub == 0)
@@ -102,7 +101,7 @@ int main(int argc, char **argv)
         }
 
         //printf("Verif: %s\n", readsm);
-        //sleep(5);*/
+        //sleep(5);
     }
 
     //sleep(20);
@@ -279,6 +278,7 @@ void WriteFile(char *text)
         perror("Mapping failed: ");
         exit(EXIT_FAILURE);
     }
+    printf("Voy a escribir %s\n", text);
     char *cmd = (char *)map;
     for (int i = 0; i < 32; i++) //Para limpiar shm
     {
