@@ -13,11 +13,6 @@
 
 #define SH_SIZE 256
 
-struct Event{
-    char event_name[32];
-    char clients[32];
-};
-
 void CmExit();
 void CmAdd(char *NameEvent);
 void CmRemove(char *NameEvent);
