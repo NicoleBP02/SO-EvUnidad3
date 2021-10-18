@@ -32,6 +32,7 @@ void CmSub(char *NameEvent);
 int WaitConf();
 void CmList();
 void CleanFile();
+void CmAsk();
 
 
 char Events[4][10] = {"null", "null", "null", "null"};
@@ -109,7 +110,7 @@ int main(int argc, char *argv[])
         int sub = strcmp(action, "sub");
         int unsub = strcmp(action, "unsub");
         int list = strcmp(action, "list\n");
-        int ask = strcmp(action, "ask");
+        int ask = strcmp(action, "ask\n");
         if (sub == 0)
         {
             CmSub(nameEv);
@@ -124,6 +125,10 @@ int main(int argc, char *argv[])
         }
         else if (ask == 0)
         {
+            printf("Ask\n");
+            CmAsk();
+            sleep(2);
+            printf("%s\n", cmd);
         }
     }
 
@@ -223,7 +228,6 @@ int WaitConf(){
         }
     }
     return 0;
-
 }
 void CleanFile()
 {
@@ -246,5 +250,30 @@ void CleanFile()
     for (int i = 0; i < 32; i++) //Para limpiar shm
     {
         cmd[i] = '\0';
+    }
+}
+void CmAsk()
+{
+    int shm_fd = shm_open("/shm0", O_CREAT | O_RDWR, 0600);
+    if (shm_fd < 0)
+    {
+        perror("shm memory error: ");
+        exit(EXIT_FAILURE);
+    }
+    fprintf(stdout, "Shared memory is opened with fd: %d\n", shm_fd);
+
+    void *map = mmap(NULL, SH_SIZE, PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    if (map == MAP_FAILED)
+    {
+        perror("Mapping failed: ");
+        exit(EXIT_FAILURE);
+    }
+    char *cmd = (char *)map;
+    for (int i = 0; i < 32; i++) //Para limpiar shm
+    {
+        cmd[0] = 'a';
+        cmd[1] = 's';
+        cmd[2] = 'k';
+        cmd[3] = ' ';
     }
 }

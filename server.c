@@ -85,6 +85,7 @@ int main(int argc, char **argv)
             token = strtok(NULL, " ");
         }
 
+        int ask = strcmp(action, "ask");
         int sub = strcmp(action, "sub");
         int unsub = strcmp(action, "unsub");
 
@@ -99,6 +100,21 @@ int main(int argc, char **argv)
         {
             printf("Unsub\n");
         }
+
+        if (ask == 0)
+        {
+            printf("Ask\n");
+            char allEvents[80]= "";
+            strcat(allEvents, Events[0]);
+            strcat(allEvents, " ");
+            strcat(allEvents, Events[1]);
+            strcat(allEvents, " ");
+            strcat(allEvents, Events[2]);
+            strcat(allEvents, " ");
+            strcat(allEvents, Events[3]);
+            WriteFile(allEvents);
+        }
+
 
         //printf("Verif: %s\n", readsm);
         //sleep(5);
@@ -288,5 +304,10 @@ void WriteFile(char *text)
     {
         cmd[i] = text[i];
     }
-
 }
+/*char ConcatEvents(char events[4][10])
+{
+    for(int i = 0; i<4; i++){
+
+    }
+}*/
