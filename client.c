@@ -7,12 +7,33 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-#define SH_SIZE 16
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <string.h>
+#include <pthread.h>
+#include <termios.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <semaphore.h>
+#include <unistd.h>
+#include <sys/types.h>
+
+
+#define SH_SIZE 256
 
 /*void *readFIFO(void *param)
 {
 
 }*/
+void CmUnsub(char *NameEvent);
+void CmSub(char *NameEvent);
+int WaitConf();
+void CmList();
+
+
+char Events[4][10] = {"null", "null", "null", "null"};
 
 int main(int argc, char *argv[])
 {
@@ -52,39 +73,154 @@ int main(int argc, char *argv[])
         aceptados, modificando un entero de comparacion para luego 
         segun este mismo modificar un entero de switch 
     */
-    //int conv = 6;
-    /*char respuesta[16];
+    char input[32] = "nada";
     while (1)
     {
-        scanf("%s", respuesta);
+        fgets(input,32, stdin);
         // printf("------------------------Respuesta %s ----------------------------------\n", respuesta);
-        for (int i = 0; respuesta[i] != '\0'; ++i)
+        for (int i = 0; input[i] != '\0'; ++i)
         {
-            respuesta[i] = tolower(respuesta[i]);
+            input[i] = tolower(input[i]);
+        }
+        // Tokenizar lo que se escribe por la terminal para ver a què comando corresponde (que seria la posicion 0)
+        char *token = strtok(input, " ");
+
+        char *action = NULL;
+
+        char *nameEv;
+
+        // loop through the string to extract all other tokens
+
+        for (int i = 0; token != NULL; i++)
+        {
+            // printf("Entro al ciclo");
+            if (i == 0)
+            {
+                action = token;
+            }
+            else if (i == 1)
+            {
+                nameEv = token;
+            }
+            token = strtok(NULL, " ");
         }
         // Tokenizar lo que se escribe por la terminal para ver a que comando corresponde (que seria la posicion 0)
-        int sub = strcmp(respuesta, "sub");
-        int unsub = strcmp(respuesta, "unsub");
-        int list = strcmp(respuesta, "list");
-        int ask = strcmp(respuesta, "ask");
-        // Cambia el valor de conv segun la entrada de usuario
+        int sub = strcmp(action, "sub");
+        int unsub = strcmp(action, "unsub");
+        int list = strcmp(action, "list\n");
+        int ask = strcmp(action, "ask");
         if (sub == 0)
         {
-            conv = 1;
+            CmSub(nameEv);
         }
         else if (unsub == 0)
         {
-            conv = 2;
+            CmUnsub(nameEv);
         }
         else if (list == 0)
         {
-            conv = 3;
+            CmList();
         }
         else if (ask == 0)
         {
-            conv = 4;
         }
-    }*/
+    }
 
     exit(EXIT_SUCCESS);
+}
+void CmSub(char *NameEvent)
+{
+    //Proceso de cuando se pide sub
+    int shm_fd = shm_open("/shm0", O_RDWR, 0600);
+    if (shm_fd < 0)
+    {
+        perror("shm memory error: ");
+        exit(EXIT_FAILURE);
+    }
+    fprintf(stdout, "Shared memory is opened with fd: %d\n", shm_fd);
+
+    void *map = mmap(NULL, SH_SIZE, PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    if (map == MAP_FAILED)
+    {
+        perror("Mapping failed: ");
+        exit(EXIT_FAILURE);
+    }
+    char *cmd = (char *)map;
+    for (int i = 0; i < 10; i++) //Para limpiar shm
+    {
+        cmd[i] = '\0';
+    }
+    for (int i = 0; i < 32; i++)
+    {
+        cmd[0] = 's';
+        cmd[1] = 'u';
+        cmd[2] = 'b';
+        cmd[3] = ' ';
+        cmd[i+4] = NameEvent[i];
+    }
+
+    int exists = WaitConf();
+
+    if (exists == 0){
+        for (int i = 0; i < 4; i++)
+        {
+            if (strcmp(Events[i], "null") == 0)
+            {
+                strcpy(Events[i], NameEvent);
+                printf("Evento %d: %s", i, Events[i]);
+                break;
+            }
+        }
+    }
+}
+void CmUnsub(char *NameEvent)
+{
+    //Proceso de cuando se pide remove
+    for (int i = 0; i < 4; i++)
+    {
+        if (strcmp(Events[i], NameEvent) == 0)
+        {
+            strcpy(Events[i], "null");
+            printf("Evento %d: %s\n", i, Events[i]);
+            break;
+        }
+    }
+}
+void CmList()
+{
+    //Proceso de cuando se pide list
+    for (int i = 0; i < 4; i++)
+    {
+        printf("Evento %d: %s\n", i, Events[i]);
+    }
+}
+
+int WaitConf(){
+    int shm_fd = shm_open("/shm0", O_RDWR, 0600);
+    if (shm_fd < 0)
+    {
+        perror("shm memory error: ");
+        exit(EXIT_FAILURE);
+    }
+    fprintf(stdout, "Shared memory is created with fd: %d\n", shm_fd);
+
+    fprintf(stdout, "The memory region is truncated.\n");
+
+    void *map = mmap(NULL, SH_SIZE, PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    if (map == MAP_FAILED)
+    {
+        perror("Mapping failed: ");
+        exit(EXIT_FAILURE);
+    }
+
+    for (int i = 0; i < 100; i++)
+    {
+        char *readsm = (char *)map;
+        printf("Verif: %s\n", readsm);
+        if(strcmp(readsm, "subconf") == 0){
+            return 1;
+        }
+    }
+    return 0;
+
 }

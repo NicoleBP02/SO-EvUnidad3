@@ -11,26 +11,101 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-#define SH_SIZE 16
+#define SH_SIZE 256
+
+struct Event{
+    char event_name[32];
+    char clients[32];
+};
 
 void CmExit();
 void CmAdd(char *NameEvent);
 void CmRemove(char *NameEvent);
 void CmTrigger(char *NameEvent);
 void CmList();
-void EventExists();
-
+int EventExists(char *NameEvent);
+void WriteFile(char *text);
 void *hilolecturaTerm(void *param);
 
+//struct Event events[4];
 char Events[4][10] = {"null", "null", "null", "null"};
-char a[10] = "asd";
+//events[0].event_name = "null";
 
 int main(int argc, char **argv)
 {
     pthread_t threadID;
     pthread_create(&threadID, NULL, &hilolecturaTerm, NULL);
 
-    sleep(20);
+    int shm_fd = shm_open("/shm0", O_CREAT | O_RDWR, 0600);
+    if (shm_fd < 0)
+    {
+        perror("shm memory error: ");
+        exit(EXIT_FAILURE);
+    }
+    fprintf(stdout, "Shared memory is created with fd: %d\n", shm_fd);
+
+    if (ftruncate(shm_fd, SH_SIZE * sizeof(char)) < 0)
+    {
+        perror("Truncation failed: ");
+        exit(EXIT_FAILURE);
+    }
+
+    fprintf(stdout, "The memory region is truncated.\n");
+
+    void *map = mmap(NULL, SH_SIZE, PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    if (map == MAP_FAILED)
+    {
+        perror("Mapping failed: ");
+        exit(EXIT_FAILURE);
+    }
+
+    while (1)
+    {
+        char *readsm = (char *)map;
+        // Tokenizar lo que se escribe por la terminal para ver a què comando corresponde (que seria la posicion 0)
+        char *token = strtok(readsm, " ");
+
+        char *action = NULL;
+
+        char *nameEv;
+
+        // loop through the string to extract all other tokens
+
+        for (int i = 0; token != NULL; i++)
+        {
+            // printf("Entro al ciclo");
+            if (i == 0)
+            {
+                action = token;
+            }
+            else if (i == 1)
+            {
+                nameEv = token;
+            }
+            token = strtok(NULL, " ");
+        }
+
+        /*int sub = strcmp(action, "add");
+        int unsub = strcmp(action, "remove");
+
+        // Cambia el valor de conv segun la entrada de usuario
+        if (sub == 0)
+        {
+            printf("Sub\n");
+            if (EventExists(nameEv) == 0){
+                WriteFile("subconf");
+            };
+        }
+        else if (unsub == 0)
+        {
+            printf("Unsub\n");
+        }
+
+        //printf("Verif: %s\n", readsm);
+        //sleep(5);*/
+    }
+
+    //sleep(20);
 }
 void CmExit()
 {
@@ -74,15 +149,7 @@ void CmTrigger(char *NameEvent)
         perror("shm memory error: ");
         exit(EXIT_FAILURE);
     }
-    fprintf(stdout, "Shared memory is created with fd: %d\n", shm_fd);
-
-    if (ftruncate(shm_fd, SH_SIZE * sizeof(char)) < 0)
-    {
-        perror("Truncation failed: ");
-        exit(EXIT_FAILURE);
-    }
-
-    fprintf(stdout, "The memory region is truncated.\n");
+    fprintf(stdout, "Shared memory is opened with fd: %d\n", shm_fd);
 
     void *map = mmap(NULL, SH_SIZE, PROT_WRITE, MAP_SHARED, shm_fd, 0);
     if (map == MAP_FAILED)
@@ -91,16 +158,17 @@ void CmTrigger(char *NameEvent)
         exit(EXIT_FAILURE);
     }
     char *cmd = (char *)map;
-    for (int i = 0; i < 10; i++) //Para limpiar shm
+    for (int i = 0; i < 32; i++) //Para limpiar shm
     {
         cmd[i] = '\0';
     }
-    for (int i = 0; i < strlen(NameEvent); i++)
+    for (int i = 0; i < 32; i++)
     {
         cmd[0] = 't';
         cmd[1] = 'g';
         cmd[2] = 'r';
-        cmd[i+3] = NameEvent[i];
+        cmd[3] = ' ';
+        cmd[i+4] = NameEvent[i];
     }
 
 }
@@ -112,12 +180,25 @@ void CmList()
         printf("Evento %d: %s\n", i, Events[i]);
     }
 }
+int EventExists(char *NameEvent)
+{
+    for (int i = 0; i < 4; i++)
+    {
+        if (strcmp(Events[i], NameEvent) == 0)
+        {
+            return 1;
+            break;
+        }
+    }
+    return 0;
+    
+}
 void *hilolecturaTerm(void *param) //Proceso hilo
 {
-    char input[16] = "nada";
+    char input[32] = "nada";
     while (1)
     {
-        fgets(input,16, stdin);
+        fgets(input,32, stdin);
         // printf("------------------------Respuesta %s ----------------------------------\n", respuesta);
         for (int i = 0; input[i] != '\0'; ++i)
         {
@@ -179,4 +260,33 @@ void *hilolecturaTerm(void *param) //Proceso hilo
         }
     }
     return NULL;
+}
+
+void WriteFile(char *text)
+{
+    //Porceso de cuando se pide trigger
+    int shm_fd = shm_open("/shm0", O_CREAT | O_RDWR, 0600);
+    if (shm_fd < 0)
+    {
+        perror("shm memory error: ");
+        exit(EXIT_FAILURE);
+    }
+    fprintf(stdout, "Shared memory is opened with fd: %d\n", shm_fd);
+
+    void *map = mmap(NULL, SH_SIZE, PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    if (map == MAP_FAILED)
+    {
+        perror("Mapping failed: ");
+        exit(EXIT_FAILURE);
+    }
+    char *cmd = (char *)map;
+    for (int i = 0; i < 32; i++) //Para limpiar shm
+    {
+        cmd[i] = '\0';
+    }
+    for (int i = 0; i < 32; i++)
+    {
+        cmd[i] = text[i];
+    }
+
 }
