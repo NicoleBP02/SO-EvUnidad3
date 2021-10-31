@@ -12,18 +12,20 @@ void CmUnsub(char *NameEvent);
 void CmSub(char *NameEvent);
 int WaitConf();
 void CmList();
-void CleanFile();
 void CmAsk();
 void *threadReadMsg(void *param);
 
-char Events[4][10] = {"null", "null", "null", "null"};
 
 int main(int argc, char *argv[])
 {
     pthread_t threadID;
     pthread_create(&threadID, NULL, &threadReadMsg, NULL);
 
-    char input[32] = "nada";
+    char events_sub[10][20];
+
+    //msgrcv();
+
+    /*char input[32] = "nada";
     while (1)
     {
         fgets(input, 32, stdin);

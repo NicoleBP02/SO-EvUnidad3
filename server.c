@@ -8,12 +8,10 @@
 
 #define SH_SIZE 256
 
-typedef struct message
-{
-    char command[10];
-    int id_queue;
-    char msg[64];
-}message;
+typedef struct message {
+    long type;
+    char text[20];
+} msg;
 
 typedef struct event
 {
@@ -38,6 +36,14 @@ int main(int argc, char **argv)
 
     pthread_t threadID;
     pthread_create(&threadID, NULL, &threadReadTerm, NULL);
+
+    event events[10];
+
+    msg m;
+    m.type=1;
+    strcpy(m.text, "This is message 1"); 
+    
+    msgsnd(mqi, &m, sizeof(m.text),0);
 
 /*
     while (1)
