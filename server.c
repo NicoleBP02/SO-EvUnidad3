@@ -1,17 +1,25 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <ctype.h>
 #include <string.h>
 #include <pthread.h>
-#include <termios.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <semaphore.h>
-#include <unistd.h>
 #include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
 
 #define SH_SIZE 256
+
+typedef struct message
+{
+    char command[10];
+    int id_queue;
+    char msg[64];
+}message;
+
+typedef struct event
+{
+    char event[64];
+    char subClients[10][64];
+}event;
 
 void CmExit();
 void CmAdd(char *NameEvent);
@@ -19,44 +27,21 @@ void CmRemove(char *NameEvent);
 void CmTrigger(char *NameEvent);
 void CmList();
 int EventExists(char *NameEvent);
-void WriteFile(char *text);
-void *hilolecturaTerm(void *param);
+void *threadReadTerm(void *param);
 
-//struct Event events[4];
-char Events[4][10] = {"null", "null", "null", "null"};
-//events[0].event_name = "null";
 
 int main(int argc, char **argv)
 {
+    key_t queue_key = ftok("./queue_key.txt", 1);
+    int mqi;
+    mqi = msgget(queue_key, IPC_CREAT | 0660);
+
     pthread_t threadID;
-    pthread_create(&threadID, NULL, &hilolecturaTerm, NULL);
+    pthread_create(&threadID, NULL, &threadReadTerm, NULL);
 
-    int shm_fd = shm_open("/shm0", O_CREAT | O_RDWR, 0600);
-    if (shm_fd < 0)
-    {
-        perror("shm memory error: ");
-        exit(EXIT_FAILURE);
-    }
-    fprintf(stdout, "Shared memory is created with fd: %d\n", shm_fd);
-
-    if (ftruncate(shm_fd, SH_SIZE * sizeof(char)) < 0)
-    {
-        perror("Truncation failed: ");
-        exit(EXIT_FAILURE);
-    }
-
-    fprintf(stdout, "The memory region is truncated.\n");
-
-    void *map = mmap(NULL, SH_SIZE, PROT_WRITE, MAP_SHARED, shm_fd, 0);
-    if (map == MAP_FAILED)
-    {
-        perror("Mapping failed: ");
-        exit(EXIT_FAILURE);
-    }
-
+/*
     while (1)
     {
-        char *readsm = (char *)map;
         // Tokenizar lo que se escribe por la terminal para ver a què comando corresponde (que seria la posicion 0)
         char *token = strtok(readsm, " ");
 
@@ -152,35 +137,7 @@ void CmRemove(char *NameEvent)
 }
 void CmTrigger(char *NameEvent)
 {
-    //Porceso de cuando se pide trigger
-    int shm_fd = shm_open("/shm0", O_CREAT | O_RDWR, 0600);
-    if (shm_fd < 0)
-    {
-        perror("shm memory error: ");
-        exit(EXIT_FAILURE);
-    }
-    fprintf(stdout, "Shared memory is opened with fd: %d\n", shm_fd);
-
-    void *map = mmap(NULL, SH_SIZE, PROT_WRITE, MAP_SHARED, shm_fd, 0);
-    if (map == MAP_FAILED)
-    {
-        perror("Mapping failed: ");
-        exit(EXIT_FAILURE);
-    }
-    char *cmd = (char *)map;
-    for (int i = 0; i < 32; i++) //Para limpiar shm
-    {
-        cmd[i] = '\0';
-    }
-    for (int i = 0; i < 32; i++)
-    {
-        cmd[0] = 't';
-        cmd[1] = 'g';
-        cmd[2] = 'r';
-        cmd[3] = ' ';
-        cmd[i+4] = NameEvent[i];
-    }
-
+    
 }
 void CmList()
 {
@@ -203,7 +160,7 @@ int EventExists(char *NameEvent)
     return 0;
     
 }
-void *hilolecturaTerm(void *param) //Proceso hilo
+void *threadReadTerm(void *param) //Proceso hilo
 {
     char input[32] = "nada";
     while (1)
@@ -270,39 +227,4 @@ void *hilolecturaTerm(void *param) //Proceso hilo
         }
     }
     return NULL;
-}
-
-void WriteFile(char *text)
-{
-    //Porceso de cuando se pide trigger
-    int shm_fd = shm_open("/shm0", O_CREAT | O_RDWR, 0600);
-    if (shm_fd < 0)
-    {
-        perror("shm memory error: ");
-        exit(EXIT_FAILURE);
-    }
-    fprintf(stdout, "Shared memory is opened with fd: %d\n", shm_fd);
-
-    void *map = mmap(NULL, SH_SIZE, PROT_WRITE, MAP_SHARED, shm_fd, 0);
-    if (map == MAP_FAILED)
-    {
-        perror("Mapping failed: ");
-        exit(EXIT_FAILURE);
-    }
-    printf("Voy a escribir %s\n", text);
-    char *cmd = (char *)map;
-    for (int i = 0; i < 32; i++) //Para limpiar shm
-    {
-        cmd[i] = '\0';
-    }
-    for (int i = 0; i < 32; i++)
-    {
-        cmd[i] = text[i];
-    }
-}
-/*char ConcatEvents(char events[4][10])
-{
-    for(int i = 0; i<4; i++){
-
-    }
 }*/
