@@ -1,82 +1,28 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/mman.h>
-#include <sys/stat.h> /* For mode constants */
-#include <fcntl.h>    /* For O_* constants */
 #include <string.h>
-#include <unistd.h>
 #include <sys/types.h>
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <string.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
 #include <pthread.h>
-#include <termios.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <semaphore.h>
-#include <unistd.h>
-#include <sys/types.h>
 
 #define SH_SIZE 256
 
-/*void *readFIFO(void *param)
-{
-
-}*/
 void CmUnsub(char *NameEvent);
 void CmSub(char *NameEvent);
 int WaitConf();
 void CmList();
 void CleanFile();
 void CmAsk();
-void *hilolecturaShm(void *param);
+void *threadReadMsg(void *param);
 
 char Events[4][10] = {"null", "null", "null", "null"};
 
 int main(int argc, char *argv[])
 {
     pthread_t threadID;
-    pthread_create(&threadID, NULL, &hilolecturaShm, NULL);
+    pthread_create(&threadID, NULL, &threadReadMsg, NULL);
 
-    int shm_fd = shm_open("/shm0", O_RDONLY, 0600);
-    if (shm_fd < 0)
-    {
-        perror("shm memory error: ");
-        exit(EXIT_FAILURE);
-    }
-    fprintf(stdout, "Shared memory is created with fd: %d\n", shm_fd);
-
-    void *map = mmap(NULL, SH_SIZE, PROT_READ, MAP_SHARED, shm_fd, 0);
-
-    if (map == MAP_FAILED)
-    {
-        perror("Mapping failed: ");
-        exit(EXIT_FAILURE);
-    }
-
-    char *cmd = (char *)map;
-    fprintf(stdout, "The contents of shared memory object: %s\n", cmd);
-
-    if (munmap(cmd, SH_SIZE) < 0)
-    {
-        perror("Unmapping failed: ");
-        exit(EXIT_FAILURE);
-    }
-    // Se crea el hilo para leer el FIFO
-    /*pthread_t threadID;
-    pthread_create(&threadID, NULL, &readFIFO, NULL);
-    */
-
-    /*
-        Se maneja la lectura de terminal
-        La lectura de terminal se realizara con un ciclo infinito 
-        que compara los valores tokenizados del string con los comandos 
-        aceptados, modificando un entero de comparacion para luego 
-        segun este mismo modificar un entero de switch 
-    */
     char input[32] = "nada";
     while (1)
     {
@@ -130,7 +76,6 @@ int main(int argc, char *argv[])
             printf("Ask\n");
             CmAsk();
             sleep(2);
-            printf("%s\n", cmd);
         }
     }
 
@@ -139,34 +84,6 @@ int main(int argc, char *argv[])
 void CmSub(char *NameEvent)
 {
     //Proceso de cuando se pide sub
-    int shm_fd = shm_open("/shm0", O_RDWR, 0600);
-    if (shm_fd < 0)
-    {
-        perror("shm memory error: ");
-        exit(EXIT_FAILURE);
-    }
-    fprintf(stdout, "Shared memory is opened with fd: %d\n", shm_fd);
-
-    void *map = mmap(NULL, SH_SIZE, PROT_WRITE, MAP_SHARED, shm_fd, 0);
-    if (map == MAP_FAILED)
-    {
-        perror("Mapping failed: ");
-        exit(EXIT_FAILURE);
-    }
-    char *cmd = (char *)map;
-    for (int i = 0; i < 32; i++) //Para limpiar shm
-    {
-        cmd[i] = '\0';
-    }
-    for (int i = 0; i < 32; i++)
-    {
-        cmd[0] = 's';
-        cmd[1] = 'u';
-        cmd[2] = 'b';
-        cmd[3] = ' ';
-        cmd[i + 4] = NameEvent[i];
-    }
-
     int exists = WaitConf();
 
     if (exists == 1)
@@ -207,102 +124,18 @@ void CmList()
 
 int WaitConf()
 {
-    int shm_fd = shm_open("/shm0", O_RDWR, 0600);
-    if (shm_fd < 0)
-    {
-        perror("shm memory error: ");
-        exit(EXIT_FAILURE);
-    }
-    fprintf(stdout, "Shared memory is created with fd: %d\n", shm_fd);
-
-    void *map = mmap(NULL, SH_SIZE, PROT_WRITE, MAP_SHARED, shm_fd, 0);
-    if (map == MAP_FAILED)
-    {
-        perror("Mapping failed: ");
-        exit(EXIT_FAILURE);
-    }
-
-    for (int i = 0; i < 50; i++)
-    {
-        char *readsm = (char *)map;
-        printf("Verif: %s\n", readsm);
-        if (strcmp(readsm, "CONFIRMADO\n") == 0)
-        {
-            return 1;
-            break;
-        }
-    }
+    
     return 0;
 }
-void CleanFile()
-{
-    //Porceso de cuando se pide clean file
-    int shm_fd = shm_open("/shm0", O_CREAT | O_RDWR, 0600);
-    if (shm_fd < 0)
-    {
-        perror("shm memory error: ");
-        exit(EXIT_FAILURE);
-    }
-    fprintf(stdout, "Shared memory is opened with fd: %d\n", shm_fd);
 
-    void *map = mmap(NULL, SH_SIZE, PROT_WRITE, MAP_SHARED, shm_fd, 0);
-    if (map == MAP_FAILED)
-    {
-        perror("Mapping failed: ");
-        exit(EXIT_FAILURE);
-    }
-    char *cmd = (char *)map;
-    for (int i = 0; i < 32; i++) //Para limpiar shm
-    {
-        cmd[i] = '\0';
-    }
-}
 void CmAsk()
 {
-    int shm_fd = shm_open("/shm0", O_CREAT | O_RDWR, 0600);
-    if (shm_fd < 0)
-    {
-        perror("shm memory error: ");
-        exit(EXIT_FAILURE);
-    }
-    fprintf(stdout, "Shared memory is opened with fd: %d\n", shm_fd);
-
-    void *map = mmap(NULL, SH_SIZE, PROT_WRITE, MAP_SHARED, shm_fd, 0);
-    if (map == MAP_FAILED)
-    {
-        perror("Mapping failed: ");
-        exit(EXIT_FAILURE);
-    }
-    char *cmd = (char *)map;
-    for (int i = 0; i < 32; i++) //Para limpiar shm
-    {
-        cmd[0] = 'a';
-        cmd[1] = 's';
-        cmd[2] = 'k';
-        cmd[3] = ' ';
-    }
+    
 }
-void *hilolecturaShm(void *param)
+/*void *threadReadMsg(void *param)
 {
-    int shm_fd = shm_open("/shm0", O_RDONLY, 0600);
-    if (shm_fd < 0)
-    {
-        perror("shm memory error: ");
-        exit(EXIT_FAILURE);
-    }
-    fprintf(stdout, "Shared memory is created with fd: %d\n", shm_fd);
-
-    void *map = mmap(NULL, SH_SIZE, PROT_READ, MAP_SHARED, shm_fd, 0);
-
-    if (map == MAP_FAILED)
-    {
-        perror("Mapping failed: ");
-        exit(EXIT_FAILURE);
-    }
     while (1)
     {
-        char *readsm = (char *)map;
-
         char *token = strtok(readsm, " ");
 
         char *action = "NULL";
@@ -331,4 +164,4 @@ void *hilolecturaShm(void *param)
             printf("El evento %s fue publicado\n", nameEv);
         }
     }
-}
+}*/
